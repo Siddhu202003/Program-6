@@ -3,25 +3,28 @@
 %%%%%%%%%%%%%%%%%%%%%%
 
 % State representation: state(Room, KeysCollected, Path)
-% where Room is current room, KeysCollected is list of keys collected, Path is list of moves
+% - Room: current room location
+% - KeysCollected: list of keys collected so far
+% - Path: list of moves taken to reach this state
 
+% Main search predicate - initiates BFS from starting room
 search(Actions) :- 
     initial(Start),
     bfs([[state(Start, [], [])]], Actions).
 
-% BFS search - found treasure
-bfs([[state(Room, _, Path)|_]|_], Actions) :- 
+% BFS search - goal reached when treasure is found
+bfs([[state(Room, _, Path) | _] | _], Actions) :- 
     treasure(Room),
     reverse(Path, Actions).
 
-% BFS search - explore next states
-bfs([Current|Rest], Actions) :- 
-    Current = [state(Room, Keys, Path)|Visited],
+% BFS search - explore neighboring states
+bfs([Current | Rest], Actions) :- 
+    Current = [state(Room, Keys, Path) | Visited],
     findall(
-        [state(NewRoom, NewKeys, NewPath)|Current],
+        [state(NewRoom, NewKeys, NewPath) | Current],
         (
             next_state(Room, Keys, NewRoom, NewKeys),
-            (NewRoom = Room -> NewPath = Path ; NewPath = [move(Room, NewRoom)|Path]),
+            (NewRoom = Room -> NewPath = Path ; NewPath = [move(Room, NewRoom) | Path]),
             \+ member(state(NewRoom, NewKeys, _), Visited)
         ),
         NewStates
@@ -29,14 +32,14 @@ bfs([Current|Rest], Actions) :-
     append(Rest, NewStates, Queue),
     bfs(Queue, Actions).
 
-% Can move through an unlocked door
+% Movement through unlocked door (bidirectional)
 next_state(Room1, Keys, Room2, Keys) :- 
     door(Room1, Room2).
 
 next_state(Room1, Keys, Room2, Keys) :- 
     door(Room2, Room1).
 
-% Can move through a locked door if we have the key
+% Movement through locked door with required key (bidirectional)
 next_state(Room1, Keys, Room2, Keys) :- 
     locked_door(Room1, Room2, Lock),
     member(Lock, Keys).
@@ -45,8 +48,8 @@ next_state(Room1, Keys, Room2, Keys) :-
     locked_door(Room2, Room1, Lock),
     member(Lock, Keys).
 
-% Pick up a key if in the same room
+% Key collection - stay in same room, add key to collection
 next_state(Room, Keys, Room, NewKeys) :- 
     key(Room, KeyColor),
     \+ member(KeyColor, Keys),
-    NewKeys = [KeyColor|Keys].
+    NewKeys = [KeyColor | Keys].
